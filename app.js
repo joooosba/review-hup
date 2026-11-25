@@ -84,9 +84,16 @@
   }
 
   /* ------------------------------------------------------------ 데이터 */
+  // Pages CDN 캐시가 오래된 JSON을 물고 있지 않도록 시간 단위로만 URL을 구분한다.
+  function busted(path) {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${path}?v=${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}`;
+  }
+
   async function load() {
     const results = await Promise.allSettled(
-      DATA_FILES.map((f) => fetch(f, { cache: 'no-store' }).then((r) => {
+      DATA_FILES.map((f) => fetch(busted(f), { cache: 'no-store' }).then((r) => {
         if (!r.ok) throw new Error(`${f} ${r.status}`);
         return r.json();
       }))
