@@ -40,12 +40,18 @@ DISTRICTS = {        # 동네 기준 구 (기본 필터 + 강서구 여유분)
 
 # ---------------------------------------------------------------- 공통 파서
 _AMOUNT_PATTERNS = [
-    # 12만 / 12만 5천 / 3만5천원 / 16만 8천원
+    # 4만 5,000원 / 8만 9,000원
+    (re.compile(r"(\d+)\s*만\s*(\d[\d,]*)\s*원"), "man_won"),
+    # 16만 8천원
+    (re.compile(r"(\d+)\s*만\s*(\d+)\s*천"), "man_cheon"),
+    # 12만 / 3만5천 / 5만원
     (re.compile(r"(\d[\d,]*)\s*만(?:\s*(\d+)\s*천)?\s*원?"), "man"),
     # 45,000원 / 45000원
     (re.compile(r"(\d[\d,]{2,})\s*원"), "won"),
     # 8천원 / 3천 원
     (re.compile(r"(\d+)\s*천\s*원"), "cheon"),
+    # '50,000' / '30, 000' 처럼 원 표기 없이 콤마만 찍은 금액 (1만 원 이상만)
+    (re.compile(r"(\d{2,3}(?:,\s?\d{3})+)"), "comma"),
 ]
 
 
@@ -53,17 +59,25 @@ def parse_amount(text: str) -> int | None:
     """제공 내역 문자열에서 금액(원)을 뽑아 최댓값을 돌려준다. 못 찾으면 None."""
     if not text:
         return None
+    text = re.sub(r"(?<=\d),\s+(?=\d{3}(?!\d))", ",", text or "")
     values: list[int] = []
     for rx, kind in _AMOUNT_PATTERNS:
         for m in rx.finditer(text):
             try:
-                if kind == "man":
+                if kind == "man_won":
+                    values.append(int(m.group(1)) * 10000 + int(m.group(2).replace(",", "")))
+                elif kind == "man_cheon":
+                    values.append(int(m.group(1)) * 10000 + int(m.group(2)) * 1000)
+                elif kind == "man":
                     n = int(m.group(1).replace(",", "")) * 10000
                     if m.group(2):
                         n += int(m.group(2)) * 1000
                     values.append(n)
-                elif kind == "won":
-                    values.append(int(m.group(1).replace(",", "")))
+                elif kind in ("won", "comma"):
+                    n = int(m.group(1).replace(",", "").replace(" ", ""))
+                    if kind == "comma" and n < 10000:
+                        continue
+                    values.append(n)
                 else:
                     values.append(int(m.group(1)) * 1000)
             except (ValueError, TypeError):
@@ -148,8 +162,21 @@ def make_record(**kw) -> dict:
 # ------------------------------------------------------------ 리뷰노트
 RN_API = "https://www.reviewnote.co.kr/api/v2/campaigns"
 RN_IMG = "https://firebasestorage.googleapis.com/v0/b/reviewnote-e92d9.appspot.com/o/{}?alt=media"
-RN_CHANNEL = {"BLOG": "블로그", "INSTA": "인스타", "REELS": "릴스", "YOUTUBE": "유튜브",
-              "CLIP": "클립", "TIKTOK": "틱톡", "SHORTS": "쇼츠"}
+RN_CHANNEL = {"BLOG": "블로그", "INSTA": "인스타", "INSTAGRAM": "인스타", "REELS": "릴스",
+              "YOUTUBE": "유튜브", "CLIP": "클립", "TIKTOK": "틱톡", "SHORTS": "쇼츠", "PIN": "핀터레스트"}
+
+
+def rn_channel_label(value: str) -> str:
+    """'BLOG_CLIP' 처럼 여러 채널이 붙은 값을 '블로그·클립' 으로 읽기 좋게 바꾼다."""
+    if not value:
+        return ""
+    parts = [RN_CHANNEL.get(t, t.capitalize()) for t in re.split(r"[_+/,]", value) if t]
+    seen, out = set(), []
+    for p in parts:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return "·".join(out)
 
 
 def rn_fetch(params: dict, max_pages: int = MAX_PAGES) -> list[dict]:
@@ -186,7 +213,7 @@ def rn_record(o: dict, regions: list[str], region_text: str = "") -> dict:
         title=o.get("title"),
         offer=offer,
         kind=kind,
-        channel=RN_CHANNEL.get(o.get("channel") or "", o.get("channel") or ""),
+        channel=rn_channel_label(o.get("channel") or ""),
         regions=regions,
         regionText=region_text or ("배송형" if kind == "배송형" else (o.get("city") or "")),
         applicants=o.get("applicantCount") or 0,
