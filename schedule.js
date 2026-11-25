@@ -711,11 +711,15 @@
     const usable = base.filter((it) => it.sel && isNum(it.lat) && isNum(it.lng));
     const skipped = base.filter((it) => it.sel && !(isNum(it.lat) && isNum(it.lng)));
     if (!usable.length) {
+      const hadRoute = !!state.route;
       state.route = null;
       renderAll();
-      note(base.length
-        ? '노선을 계산할 위치가 없습니다. 주소를 넣거나 카드의 <b>📍 위치</b>로 좌표를 지정해 주세요.'
-        : '먼저 일정을 담아 주세요.');
+      if (!base.length) {
+        note('');
+      } else {
+        note('노선을 계산할 위치가 없습니다. 주소를 넣거나 카드의 <b>📍 위치</b>로 좌표를 지정해 주세요.');
+      }
+      void hadRoute;
       return;
     }
     const pts = usable.map((it) => ({ id: it.id, lat: it.lat, lng: it.lng }));
