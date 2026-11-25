@@ -569,33 +569,3 @@ select {
   .sort-group { width: 100%; justify-content: space-between; }
   .legend { display: none; }
 }
-
-/* ---------------------------------------------------------------- 쇼츠 편집기 링크 */
-.topbar-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: .78rem;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  color: #fff;
-  text-decoration: none;
-  white-space: nowrap;
-  background: linear-gradient(135deg, #7c5cff, #5b3fe0);
-  border: 1px solid rgba(255, 255, 255, .16);
-  box-shadow: 0 6px 16px -10px rgba(124, 92, 255, .95);
-  transition: filter .15s, transform .15s;
-}
-
-.topbar-link:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.topbar-link:active { transform: translateY(0); }
-
-.tl-short { display: none; }
-
-@media (max-width: 640px) {
-  .topbar-link { padding: 7px 10px; font-size: .72rem; }
-  .tl-full { display: none; }
-  .tl-short { display: inline; }
-}
