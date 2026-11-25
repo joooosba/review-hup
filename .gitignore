@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# 임시: GitHub App workflows 권한 없음 (권한 허용 후 추가)
+.github/
