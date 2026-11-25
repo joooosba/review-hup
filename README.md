@@ -18,8 +18,27 @@ GitHub Pages 정적 사이트 + GitHub Actions 수집기로 돌아갑니다.
 - **최적 노선**: 출발지(구로구·화곡동·영등포·관악 프리셋, 직접 입력, 현재 위치)에서 그날 방문지들을 **Nearest Neighbor + 2-opt**로 정렬하고, 지도에 경로선과 순서별 직선거리를 표시. 각 지점은 `https://map.naver.com/p/directions/...` 링크로 바로 길찾기.
 - **날짜 필터**: 전체 예정 / 오늘 / 이번 주 / 지난 일정 포함 / 특정 날짜. 방문·리뷰 완료 체크, 노선 포함 여부, 삭제 지원.
 - **백업**: `⬇️ JSON 백업` / `⬆️ 불러오기`로 일정을 파일로 보관·복원.
+- **🔐 내 체험단 연동**: 5개 사이트(리뷰노트·강남맛집·레뷰·디너의여왕·리뷰플레이스)에서 **선정된** 체험단을 암호화 파일 `data/my_schedule.enc.json`에서 불러와 일정·지도에 자동으로 채웁니다. 잠금 비밀번호를 한 번 넣으면 파생 키가 `localStorage`(`rh-sched-key-v1`)에 보관돼 다음 접속부터는 자동 동기화됩니다. `🔄 지금 새로고침`은 원격 목록을 다시 받아 병합하고, `🔒 잠금`은 이 브라우저의 연동 키만 지웁니다(담아 둔 일정은 유지).
+  - 병합은 `id` 기준입니다. 사용자가 바꾼 날짜·시간·주소·메모·지도 핀, `방문 완료`·`리뷰 완료` 체크는 그대로 두고, 손대지 않은 항목만 새 값으로 갱신하며, 사용자가 직접 추가한 일정은 건드리지 않습니다.
+  - 연동 파일은 `PBKDF2(SHA-256, 100,000회)` + `AES-256-GCM`으로 암호화돼 있고, 브라우저는 Web Crypto(`crypto.subtle.deriveBits` + `decrypt`)로 풉니다. 공개 저장소에는 **암호문만** 올라가고 평문 일정·비밀번호는 커밋하지 않습니다(`.gitignore`).
 
-> **개인정보**: 이 저장소는 공개 저장소입니다. 방문 일정·출발지·메모는 **오직 사용자 브라우저의 `localStorage`(`rh-sched-v1`, 좌표 캐시 `rh-sched-geo-v1`)에만** 저장되며 서버·저장소로 전송되지 않습니다. 저장소에는 코드만 있습니다.
+### 연동 데이터 갱신 방법
+
+새로 선정된 체험단을 반영하려면 평문 파일을 고친 뒤 다시 암호화합니다.
+
+```bash
+# data/my_schedule_plain.json (커밋 금지) → data/my_schedule.enc.json (커밋 대상)
+REVIEW_HUB_PW='****' python3 scripts/encrypt_schedule.py
+# 또는
+python3 scripts/encrypt_schedule.py --password '****'
+
+# 복호화 확인
+python3 scripts/encrypt_schedule.py --decrypt data/my_schedule.enc.json --password '****'
+```
+
+암호화할 때마다 새 salt가 만들어지므로, 이미 연동해 둔 브라우저는 `🔄 지금 새로고침` 시 비밀번호를 한 번 다시 물어봅니다(키가 새 salt와 맞지 않기 때문).
+
+> **개인정보**: 이 저장소는 공개 저장소입니다. 방문 일정·출발지·메모는 **오직 사용자 브라우저의 `localStorage`(`rh-sched-v1`, 좌표 캐시 `rh-sched-geo-v1`, 연동 키 `rh-sched-key-v1`)에만** 저장되며 서버·저장소로 전송되지 않습니다. 저장소에는 코드와 **암호문**(`data/my_schedule.enc.json`)만 있습니다.
 
 ## 구조
 
