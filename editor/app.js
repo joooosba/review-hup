@@ -592,7 +592,9 @@
 
   function setSeg(container, value) {
     Array.prototype.forEach.call(container.children, function (b) {
-      b.classList.toggle('on', b.dataset.v === value);
+      var on = b.dataset.v === value;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
     });
   }
 
