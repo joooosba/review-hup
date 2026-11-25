@@ -232,11 +232,8 @@
   }
 
   function card(c) {
-    const a = document.createElement('a');
-    a.className = 'card';
-    a.href = c.url || '#';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    const article = document.createElement('article');
+    article.className = 'card';
 
     const d = ddayInfo(c);
     const faceBadge = c.face ? '<span class="badge warn">얼굴 노출</span>' : '';
@@ -248,7 +245,9 @@
       : [c.kind === '배송형' ? '전국 배송' : '서울']
     ).map((r) => `<span>${esc(r)}</span>`).join('');
 
-    a.innerHTML = `
+    article.innerHTML = `
+      <a class="card-hit" href="${esc(c.url || '#')}" target="_blank" rel="noopener noreferrer"
+         aria-label="${esc(c.title || '제목 없음')} — ${esc(c.site)} 신청 페이지 새 창으로 열기"></a>
       <div class="thumb">
         <div class="fallback" aria-hidden="true">${c.kind === '배송형' ? '📦' : '🍽️'}</div>
         ${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
@@ -267,8 +266,15 @@
           <span class="amount ${c.amount === null || c.amount === undefined ? 'none' : ''}">${amountText(c.amount)}</span>
           <span class="people">신청 ${c.applicants || 0} / 모집 ${c.capacity || 0}</span>
         </div>
+        <div class="card-foot">
+          <button type="button" class="sched-add" data-sched-add
+                  data-cid="${esc(c.id)}" data-site="${esc(c.site)}"
+                  data-title="${esc(c.title || '')}" data-region="${esc(c.regionText || (c.regions && c.regions.join(' ')) || '')}"
+                  data-url="${esc(c.url || '')}" data-deadline="${esc(c.deadline || '')}"
+                  title="방문 날짜·시간을 정해 내 일정에 담기">📅 일정 담기</button>
+        </div>
       </div>`;
-    return a;
+    return article;
   }
 
   function esc(s) {
