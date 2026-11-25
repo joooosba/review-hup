@@ -1189,3 +1189,6 @@ body.modal-open { overflow: hidden; }
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* 출발 마커: 회전 없이 '출발' 글자만 바로 세운다 */
+.map-pin.origin span > i { transform: none; }
