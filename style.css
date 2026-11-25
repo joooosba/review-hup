@@ -1245,3 +1245,118 @@ body.modal-open { overflow: hidden; }
   background: color-mix(in srgb, var(--brand) 10%, var(--panel-soft));
   font-weight: 800;
 }
+
+/* ------------------------------------------------- 신청 중/선정됨 상태 · 지도 선택 */
+.chip-n {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.chip.on .chip-n { background: color-mix(in srgb, #fff 26%, transparent); }
+
+#statusChips .chip[data-status="selected"].on {
+  border-color: color-mix(in srgb, #059669 60%, var(--line));
+  background: color-mix(in srgb, #059669 14%, var(--panel));
+  color: #047857;
+}
+
+#statusChips .chip[data-status="applied"].on {
+  border-color: color-mix(in srgb, #7c3aed 55%, var(--line));
+  background: color-mix(in srgb, #7c3aed 12%, var(--panel));
+  color: #6d28d9;
+}
+
+:root[data-theme="dark"] #statusChips .chip[data-status="selected"].on { color: #6ee7b7; }
+:root[data-theme="dark"] #statusChips .chip[data-status="applied"].on { color: #c4b5fd; }
+
+.sel-count {
+  font-size: .74rem;
+  font-weight: 800;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.map-tip {
+  margin: 8px 2px 0;
+  font-size: .74rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.map-tip b { color: var(--text); }
+
+/* 카드: 큼직한 선택 체크박스 */
+.sched-card {
+  position: relative;
+}
+
+.sched-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  width: 54px;
+  align-self: stretch;
+  padding: 6px 0;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: .58rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sched-check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--brand);
+  cursor: pointer;
+  margin: 0;
+}
+
+.sched-check.on {
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--panel-soft));
+  color: var(--brand);
+}
+
+.sched-check.dim { opacity: .45; cursor: not-allowed; }
+
+.sched-order { width: 26px; height: 26px; font-size: .76rem; }
+
+/* 상태 배지 */
+.sched-meta .st {
+  font-weight: 800;
+  border-radius: 999px;
+}
+
+.sched-meta .st.selected {
+  color: #047857;
+  border-color: color-mix(in srgb, #059669 45%, var(--line));
+  background: color-mix(in srgb, #059669 12%, var(--panel-soft));
+}
+
+.sched-meta .st.applied {
+  color: #6d28d9;
+  border-color: color-mix(in srgb, #7c3aed 42%, var(--line));
+  background: color-mix(in srgb, #7c3aed 10%, var(--panel-soft));
+}
+
+.sched-meta .st.ship {
+  color: #6b7280;
+  border-style: dashed;
+}
+
+:root[data-theme="dark"] .sched-meta .st.selected { color: #6ee7b7; }
+:root[data-theme="dark"] .sched-meta .st.applied { color: #c4b5fd; }
+
+.sched-meta .when { font-weight: 800; color: var(--text); }

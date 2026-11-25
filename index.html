@@ -7,7 +7,7 @@
 <title>체험단 대시보드 · 구로·영등포·관악</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=20261125d">
+<link rel="stylesheet" href="style.css?v=20261125e">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎁</text></svg>">
 </head>
 <body>
@@ -124,7 +124,7 @@
       <div id="syncLock">
         <div class="sync-head">
           <b>🔐 내 체험단 연동</b>
-          <span class="sync-sub">리뷰노트 · 강남맛집 · 레뷰 · 디너의여왕 · 리뷰플레이스에서 <b>선정된</b> 체험단을 암호화 파일에서 불러와 아래 일정·지도에 자동으로 채웁니다.</span>
+          <span class="sync-sub">리뷰노트 · 강남맛집 · 레뷰 · 디너의여왕 · 리뷰플레이스의 <b>선정된</b> 체험단과 <b>신청 완료·발표 대기 중</b>인 체험단을 암호화 파일에서 불러와 아래 목록·지도에 채웁니다.</span>
         </div>
         <div class="sync-form">
           <input type="password" id="syncPw" inputmode="numeric" autocomplete="current-password"
@@ -148,6 +148,29 @@
     </section>
 
     <section class="panel sched-controls" aria-label="일정 조건">
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">상태</span>
+          <div class="chips" id="statusChips">
+            <button class="chip on" type="button" data-status="all">전체 <b class="chip-n" data-count="all">0</b></button>
+            <button class="chip" type="button" data-status="selected">✅ 선정됨 <b class="chip-n" data-count="selected">0</b></button>
+            <button class="chip" type="button" data-status="applied">⏳ 신청 중 <b class="chip-n" data-count="applied">0</b></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">지도·노선</span>
+          <div class="chips" id="selChips">
+            <button class="chip" type="button" data-sel="none">선택 해제</button>
+            <button class="chip" type="button" data-sel="selected">선정만 전체 선택</button>
+            <button class="chip" type="button" data-sel="visible">현재 목록 전체 선택</button>
+          </div>
+          <span class="sel-count" id="selCount">0곳 선택</span>
+        </div>
+      </div>
+
       <div class="filter-row">
         <div class="filter-group">
           <span class="filter-label">날짜</span>
@@ -207,6 +230,7 @@
     <div class="sched-layout">
       <div class="map-col">
         <div id="map" aria-label="일정 지도"></div>
+        <p class="map-tip" id="mapTip">체크한 체험단만 지도에 표시됩니다. 카드의 <b>지도·노선 포함</b>을 눌러 2~3곳만 골라 보세요.</p>
         <div class="map-note" id="mapNote"></div>
       </div>
       <div class="list-col">
@@ -251,7 +275,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer
         onerror="var s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s);"></script>
-<script src="app.js?v=20261125b" defer></script>
-<script src="schedule.js?v=20261125f" defer></script>
+<script src="app.js?v=20261125c" defer></script>
+<script src="schedule.js?v=20261125g" defer></script>
 </body>
 </html>

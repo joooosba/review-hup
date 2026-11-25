@@ -70,6 +70,7 @@
     origin: { label: '구로구', lat: 37.4952, lng: 126.8877, kind: 'preset' },
     geo: {},
     mode: 'upcoming',
+    status: 'all',
     pickDate: '',
     route: null,
     pickId: null
@@ -178,6 +179,14 @@
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
   }
 
+  /* 신청 중/선정됨 — 상태 표시가 없는(직접 추가한) 일정은 '선정됨'처럼 다룬다. */
+  const effStatus = (it) => (it && it.status === 'applied' ? 'applied' : 'selected');
+  const isShip = (it) => !!(it && it.kind === '배송형');
+  /* 지도·노선에 올릴 수 있는 항목: 체크됐고 좌표가 있고 배송형이 아닌 것 */
+  function selItems() {
+    return state.items.filter((it) => it.sel && !isShip(it) && isNum(it.lat) && isNum(it.lng));
+  }
+
   function byId(id) {
     for (let i = 0; i < state.items.length; i += 1) {
       if (state.items[i].id === id) return state.items[i];
@@ -200,6 +209,11 @@
       memo: it.memo || '',
       url: it.url || '',
       source: it.source || '',
+      status: it.status === 'applied' ? 'applied' : (it.status === 'selected' ? 'selected' : ''),
+      kind: it.kind || '',
+      announce: it.announce || '',
+      ratio: it.ratio || '',
+      offers: it.offers || '',
       remote: (it.remote && typeof it.remote === 'object') ? it.remote : null,
       pin: !!it.pin,
       lat: isNum(it.lat) ? it.lat : (isNum(Number(it.lat)) && it.lat !== null && it.lat !== '' ? Number(it.lat) : null),
@@ -354,7 +368,7 @@
 
   function resolvePending() {
     if (resolving) return;
-    const todo = state.items.filter((it) => !(isNum(it.lat) && isNum(it.lng)) && it.geoStatus !== 'none');
+    const todo = state.items.filter((it) => !isShip(it) && !(isNum(it.lat) && isNum(it.lng)) && it.geoStatus !== 'none');
     if (!todo.length) return;
     resolving = true;
     let left = todo.length;
@@ -467,7 +481,7 @@
     map.invalidateSize({ animate: false });
     markerLayer.clearLayers();
 
-    const list = visibleItems();
+    const list = selItems();
     const order = state.route && state.route.ids ? state.route.ids : [];
     const points = [[state.origin.lat, state.origin.lng]];
 
@@ -513,16 +527,19 @@
   }
 
   function renderMapNote(list) {
-    const noFix = list.filter((it) => !(isNum(it.lat) && isNum(it.lng)));
-    const approx = list.filter((it) => it.approx && it.geoStatus === 'ok');
+    const picked = list.length;
+    const selectedNoFix = state.items.filter((it) => it.sel && !isShip(it) && !(isNum(it.lat) && isNum(it.lng)));
+    const selectedShip = state.items.filter((it) => it.sel && isShip(it));
     const parts = [];
-    if (!list.length) {
-      parts.push('담은 일정이 생기면 이 지도에 번호 핀으로 표시됩니다.');
+    if (!picked) {
+      parts.push('🗺️ 일정 카드에서 <b>지도에 띄울 체험단을 선택해 주세요.</b>');
     } else {
-      parts.push('핀을 누르면 매장 정보와 <b>네이버 길찾기</b> 링크가 열립니다.');
+      parts.push('체크한 <b>' + picked + '곳</b>만 지도에 표시 중 · 핀을 누르면 매장 정보와 <b>네이버 길찾기</b>가 열립니다.');
     }
+    const approx = list.filter((it) => it.approx && it.geoStatus === 'ok');
     if (approx.length) parts.push('동네 기준 대략 위치 <b>' + approx.length + '곳</b>');
-    if (noFix.length) parts.push('위치 미확인 <b>' + noFix.length + '곳</b> — 카드의 <b>📍 위치</b>로 직접 찍어 주세요');
+    if (selectedNoFix.length) parts.push('위치 미확인 <b>' + selectedNoFix.length + '곳</b> — 카드의 <b>📍 위치</b>로 직접 찍어 주세요');
+    if (selectedShip.length) parts.push('배송형 <b>' + selectedShip.length + '곳</b>은 지도에서 빠집니다');
     if (state.pickId) parts.push('<b>지도를 클릭</b>하면 위치를 지정합니다 (Esc 취소)');
     mapNoteEl.innerHTML = parts.join(' · ');
   }
@@ -556,6 +573,11 @@
   function visibleItems() {
     const t = todayISO();
     let arr = state.items.slice();
+    if (state.status === 'applied') {
+      arr = arr.filter((it) => effStatus(it) === 'applied');
+    } else if (state.status === 'selected') {
+      arr = arr.filter((it) => effStatus(it) === 'selected');
+    }
     if (state.mode === 'today') {
       arr = arr.filter((it) => it.date === t);
     } else if (state.mode === 'week') {
@@ -589,18 +611,37 @@
     el.className = 'sched-card';
     el.dataset.id = it.id;
     if (it.visited) el.classList.add('is-visited');
+    if (it.sel) el.classList.add('is-sel');
     const order = state.route && state.route.ids ? state.route.ids.indexOf(it.id) : -1;
     if (order >= 0) el.classList.add('in-route');
 
+    const ship = isShip(it);
+    const applied = effStatus(it) === 'applied';
+
     const badges = [];
+    badges.push('<span class="st ' + (applied ? 'applied' : 'selected') + '">'
+      + (applied ? '⏳ 신청 중' : '✅ 선정됨') + '</span>');
     if (it.source) badges.push('<span class="src">' + esc(it.source) + '</span>');
-    badges.push('<span>' + fmtDate(it.date) + (it.time ? ' ' + it.time : ' 시간 미정') + '</span>');
-    badges.push(it.address
-      ? '<span class="where">📍 ' + esc(it.address) + '</span>'
-      : '<span class="where none">📍 위치 미지정</span>');
+    if (ship) badges.push('<span class="st ship">📦 배송형</span>');
+    else if (it.kind && it.kind !== '방문형') badges.push('<span class="where">' + esc(it.kind) + '</span>');
+
+    if (applied) {
+      badges.push(it.announce
+        ? '<span class="when">📣 발표 ' + fmtDate(it.announce) + ' ' + ddayText(it.announce) + '</span>'
+        : '<span class="when">📣 발표일 미정</span>');
+    } else {
+      badges.push('<span class="when">' + fmtDate(it.date) + (it.time ? ' ' + it.time : ' 시간 미정') + '</span>');
+    }
+
+    if (it.address) {
+      badges.push('<span class="where">📍 ' + esc(it.address) + '</span>');
+    } else if (!ship) {
+      badges.push('<span class="where none">📍 위치 미지정</span>');
+    }
+    if (it.ratio) badges.push('<span title="신청 / 모집 인원">👥 ' + esc(it.ratio) + '</span>');
     if (it.deadline) {
       const n = daysLeft(it.deadline);
-      badges.push('<span class="due' + (n !== null && n <= 2 ? ' warn' : '') + '">마감 ' + fmtDate(it.deadline) + ' ' + ddayText(it.deadline) + '</span>');
+      badges.push('<span class="due' + (n !== null && n <= 2 ? ' warn' : '') + '">' + (applied ? '리뷰 마감 ' : '마감 ') + fmtDate(it.deadline) + ' ' + ddayText(it.deadline) + '</span>');
     }
 
     const links = [];
@@ -610,15 +651,24 @@
     links.push('<a href="' + esc(naverSearch(it.title)) + '" target="_blank" rel="noopener">🔎 매장</a>');
     if (it.url) links.push('<a href="' + esc(it.url) + '" target="_blank" rel="noopener">🔗 체험단</a>');
 
+    const check = ship
+      ? '<span class="sched-check dim" title="배송형은 지도·노선에서 제외됩니다"><span>지도 제외</span></span>'
+      : '<label class="sched-check' + (it.sel ? ' on' : '') + '" title="체크하면 지도와 최적 노선에 들어갑니다">'
+        + '<input type="checkbox" data-sact="sel"' + (it.sel ? ' checked' : '') + ' aria-label="지도·노선 포함">'
+        + '<span>지도·노선</span></label>';
+
+    const offer = (it.offers && it.memo && it.memo.indexOf(it.offers) >= 0) ? '' : it.offers;
+    const memoText = [offer, it.memo].filter(Boolean).join(' · ');
+
     el.innerHTML = ''
+      + check
       + '<div class="sched-order">' + (order >= 0 ? order + 1 : index + 1) + '</div>'
       + '<div class="sched-main">'
       + '  <div class="sched-head">'
       + '    <h3>' + esc(it.title) + '</h3>'
-      + '    <label class="sched-sel"><input type="checkbox" data-sact="sel"' + (it.sel ? ' checked' : '') + '> 노선</label>'
       + '  </div>'
       + '  <div class="sched-meta">' + badges.join('') + '</div>'
-      + (it.memo ? '<p class="sched-memo">' + esc(it.memo) + '</p>' : '')
+      + (memoText ? '<p class="sched-memo">' + esc(memoText) + '</p>' : '')
       + '  <div class="sched-actions">'
       + '    <button type="button" class="tgl' + (it.visited ? ' on' : '') + '" data-sact="visited">' + (it.visited ? '✅ 방문 완료' : '방문 완료') + '</button>'
       + '    <button type="button" class="tgl' + (it.reviewed ? ' on' : '') + '" data-sact="reviewed">' + (it.reviewed ? '✅ 리뷰 완료' : '리뷰 완료') + '</button>'
@@ -628,6 +678,26 @@
       + '  </div>'
       + '</div>';
     return el;
+  }
+
+  function renderStatusCounts() {
+    const all = state.items.length;
+    const applied = state.items.filter((it) => effStatus(it) === 'applied').length;
+    const selected = all - applied;
+    const map = { all: all, selected: selected, applied: applied };
+    document.querySelectorAll('#statusChips [data-count]').forEach((el) => {
+      el.textContent = String(map[el.dataset.count] || 0);
+    });
+  }
+
+  function renderSelCount() {
+    const el = document.getElementById('selCount');
+    if (!el) return;
+    const n = state.items.filter((it) => it.sel && !isShip(it)).length;
+    const m = selItems().length;
+    el.textContent = n
+      ? ('선택 ' + n + '곳' + (m < n ? ' (지도 ' + m + '곳)' : ''))
+      : '0곳 선택';
   }
 
   function renderList() {
@@ -640,7 +710,7 @@
       if (total) {
         const chip = document.querySelector('#dateChips .chip');
         emptyEl.innerHTML = '<p class="empty-emoji">🔍</p><p><b>이 조건에 맞는 일정이 없습니다.</b></p>'
-          + '<p class="muted">다른 날짜를 고르거나 <b>전체 예정</b>·<b>지난 일정 포함</b>을 눌러 보세요. (저장된 일정 ' + total + '건)</p>'
+          + '<p class="muted">다른 날짜·상태를 고르거나 <b>전체 예정</b>·<b>지난 일정 포함</b>을 눌러 보세요. (저장된 일정 ' + total + '건)</p>'
           + '<div class="empty-actions"><button type="button" class="ghost-btn" data-sact="mode-all">지난 일정 포함</button></div>';
         void chip;
       } else {
@@ -712,19 +782,18 @@
   }
 
   function computeRoute() {
-    const base = visibleItems();
-    const usable = base.filter((it) => it.sel && isNum(it.lat) && isNum(it.lng));
-    const skipped = base.filter((it) => it.sel && !(isNum(it.lat) && isNum(it.lng)));
+    const base = state.items;
+    const usable = selItems();
+    const skipped = base.filter((it) => it.sel && !isShip(it) && !(isNum(it.lat) && isNum(it.lng)));
+    const pickedCount = base.filter((it) => it.sel && !isShip(it)).length;
     if (!usable.length) {
-      const hadRoute = !!state.route;
       state.route = null;
       renderAll();
-      if (!base.length) {
-        note('');
+      if (!pickedCount) {
+        note('먼저 일정 카드에서 <b>지도·노선 포함</b>을 체크해 주세요. 체크한 곳만 지도와 노선에 반영됩니다.');
       } else {
-        note('노선을 계산할 위치가 없습니다. 주소를 넣거나 카드의 <b>📍 위치</b>로 좌표를 지정해 주세요.');
+        note('체크한 곳의 위치를 아직 모릅니다. 카드의 <b>📍 위치</b>로 좌표를 지정해 주세요.');
       }
-      void hadRoute;
       return;
     }
     const pts = usable.map((it) => ({ id: it.id, lat: it.lat, lng: it.lng }));
@@ -792,6 +861,8 @@
 
   function renderAll() {
     renderBadge();
+    renderStatusCounts();
+    renderSelCount();
     renderList();
     renderMap();
     renderRoute();
@@ -982,6 +1053,8 @@
   const syncState = {
     on: false,
     count: 0,
+    selected: 0,
+    applied: 0,
     generatedAt: '',
     syncedAt: '',
     busy: false
@@ -1076,6 +1149,11 @@
       time: r.time || '',
       memo: r.memo || '',
       url: r.url || '',
+      status: r.status === 'applied' ? 'applied' : (r.status === 'selected' ? 'selected' : ''),
+      kind: r.kind || '',
+      announce: r.announce || '',
+      ratio: r.ratio || '',
+      offers: r.offers || '',
       lat: isNum(lat) ? lat : null,
       lng: isNum(lng) ? lng : null
     };
@@ -1096,7 +1174,9 @@
           id: rem.id, source: rem.source, title: rem.title, address: rem.address,
           date: rem.date || todayISO(), time: rem.time, deadline: rem.deadline,
           memo: rem.memo, url: rem.url, lat: rem.lat, lng: rem.lng,
-          remote: rem, createdAt: Date.now()
+          status: rem.status, kind: rem.kind, announce: rem.announce,
+          ratio: rem.ratio, offers: rem.offers,
+          sel: false, remote: rem, createdAt: Date.now()
         });
         if (isNum(rem.lat) && isNum(rem.lng)) it.geoStatus = 'ok';
         state.items.push(it);
@@ -1113,6 +1193,21 @@
       it.time = pick('time');
       it.address = pick('address');
       it.memo = pick('memo');
+      /* 상태(신청 중 → 선정됨)는 언제나 원격 최신값을 따른다. */
+      if (rem.status && rem.status !== it.status) {
+        const promoted = it.status === 'applied' && rem.status === 'selected';
+        it.status = rem.status;
+        if (promoted) {
+          state.promoted = state.promoted || [];
+          state.promoted.push(rem.title || rem.id);
+        }
+      } else if (!it.status && rem.status) {
+        it.status = rem.status;
+      }
+      if (rem.kind) it.kind = rem.kind;
+      if (rem.announce) it.announce = rem.announce;
+      if (rem.ratio) it.ratio = rem.ratio;
+      if (rem.offers) it.offers = rem.offers;
       if (!it.pin && isNum(rem.lat) && isNum(rem.lng)) {
         it.lat = rem.lat;
         it.lng = rem.lng;
@@ -1139,7 +1234,8 @@
     syncLockEl.hidden = syncState.on;
     syncOnEl.hidden = !syncState.on;
     if (!syncState.on) return;
-    const parts = ['동기화 ' + syncState.count + '건'];
+    const parts = ['동기화 ' + syncState.count + '건',
+      '선정 ' + syncState.selected + ' · 신청 중 ' + syncState.applied];
     if (syncState.generatedAt) parts.push('데이터 ' + syncState.generatedAt.replace('T', ' ').slice(0, 16));
     if (syncState.syncedAt) parts.push('확인 ' + syncState.syncedAt);
     syncInfoEl.textContent = parts.join(' · ');
@@ -1162,18 +1258,27 @@
   async function applyPayload(payload, keyB64) {
     const plain = await decryptWithKey(payload, keyB64);
     const items = Array.isArray(plain.items) ? plain.items : [];
+    state.promoted = [];
     const res = mergeRemote(items);
+    const appliedN = items.filter((r) => r && r.status === 'applied').length;
+    const selectedN = items.length - appliedN;
     syncState.on = true;
     syncState.count = items.length;
+    syncState.selected = selectedN;
+    syncState.applied = appliedN;
     syncState.generatedAt = String(plain.generatedAt || payload.generatedAt || '');
     syncState.syncedAt = new Date().toTimeString().slice(0, 5);
     saveState();
     renderSync();
     renderAll();
     resolvePending();
-    syncMsg(syncMsg2El, '선정 내역 ' + items.length + '건 중 새로 ' + res.added
-      + '건 추가, ' + res.updated + '건 갱신했습니다.');
-    toast('🔐 체험단 선정 내역을 불러왔습니다 (' + items.length + '건)');
+    const promo = (state.promoted && state.promoted.length)
+      ? ' 🎉 ' + state.promoted.slice(0, 3).join(', ') + (state.promoted.length > 3 ? ' 외 ' + (state.promoted.length - 3) + '건' : '') + ' 선정됨으로 승격!'
+      : '';
+    syncMsg(syncMsg2El, '선정 ' + selectedN + '건 · 신청 중 ' + appliedN + '건 (새로 ' + res.added
+      + '건 추가, ' + res.updated + '건 갱신)' + promo);
+    toast('🔐 체험단 목록을 불러왔습니다 — 선정 ' + selectedN + '건 · 신청 중 ' + appliedN + '건');
+    state.promoted = [];
     return res;
   }
 
@@ -1232,6 +1337,8 @@
     dropKeyStore();
     syncState.on = false;
     syncState.count = 0;
+    syncState.selected = 0;
+    syncState.applied = 0;
     syncState.generatedAt = '';
     syncState.syncedAt = '';
     syncMsg(syncMsg2El, '');
@@ -1286,10 +1393,50 @@
   }
 
   /* ---------------------------------------------------------------- 이벤트 */
+  function afterSelChange() {
+    saveState();
+    if (state.route) computeRoute();
+    else renderAll();
+  }
+
   function bind() {
     document.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.view));
     });
+
+    const statusChips = document.getElementById('statusChips');
+    if (statusChips) {
+      statusChips.addEventListener('click', (e) => {
+        const btn = e.target.closest('.chip');
+        if (!btn) return;
+        state.status = btn.dataset.status || 'all';
+        statusChips.querySelectorAll('.chip').forEach((b) => b.classList.toggle('on', b === btn));
+        renderAll();
+      });
+    }
+
+    const selChips = document.getElementById('selChips');
+    if (selChips) {
+      selChips.addEventListener('click', (e) => {
+        const btn = e.target.closest('.chip');
+        if (!btn) return;
+        const mode = btn.dataset.sel;
+        if (mode === 'none') {
+          state.items.forEach((it) => { it.sel = false; });
+          note('지도·노선 선택을 모두 해제했습니다.');
+        } else if (mode === 'selected') {
+          state.items.forEach((it) => { it.sel = !isShip(it) && effStatus(it) === 'selected'; });
+          note('선정된 체험단만 지도에 올렸습니다. 몇 곳만 남기려면 카드의 체크를 풀어 주세요.');
+        } else {
+          const ids = {};
+          visibleItems().forEach((it) => { ids[it.id] = true; });
+          state.items.forEach((it) => { it.sel = !!ids[it.id] && !isShip(it); });
+          note('지금 보고 있는 목록의 체험단을 지도에 올렸습니다.');
+        }
+        state.route = null;
+        afterSelChange();
+      });
+    }
 
     document.getElementById('dateChips').addEventListener('click', (e) => {
       const btn = e.target.closest('.chip');
@@ -1314,8 +1461,9 @@
 
     document.getElementById('routeBtn').addEventListener('click', () => {
       computeRoute();
-      const list = visibleItems();
-      if (list.length && state.route) note('노선을 계산했습니다. 지도의 초록 선과 번호 순서를 확인하세요.');
+      if (state.route) {
+        note('체크한 <b>' + state.route.ids.length + '곳</b>으로 노선을 계산했습니다. 지도의 초록 선과 번호 순서를 확인하세요.');
+      }
     });
 
     routeClear.addEventListener('click', () => {
@@ -1411,7 +1559,7 @@
       } else if (act === 'pin') {
         state.pickId = it.id;
         note('지도를 클릭하면 「' + esc(it.title) + '」 위치를 지정합니다. (Esc 취소)');
-        renderMapNote(visibleItems());
+        renderMapNote(selItems());
         if (map) mapEl.classList.add('picking');
       } else if (act === 'del') {
         state.items = state.items.filter((x) => x.id !== it.id);
@@ -1428,8 +1576,7 @@
       const it = card ? byId(card.dataset.id) : null;
       if (!it) return;
       it.sel = box.checked;
-      saveState();
-      if (state.route) computeRoute();
+      afterSelChange();
     });
 
     document.addEventListener('click', (e) => {
@@ -1477,7 +1624,7 @@
       if (state.pickId) {
         state.pickId = null;
         mapEl.classList.remove('picking');
-        renderMapNote(visibleItems());
+        renderMapNote(selItems());
         note('');
       }
     });
@@ -1586,8 +1733,21 @@
     reader.readAsText(file);
   }
 
+  /* ------------------------------------------------ 선택 초기값(한 번만) */
+  const SEL_INIT_KEY = 'rh-sched-sel-v2';
+
+  function initSelectionDefault() {
+    try {
+      if (localStorage.getItem(SEL_INIT_KEY)) return;
+    } catch (e) { return; }
+    state.items.forEach((it) => { it.sel = false; });
+    if (state.items.length) saveState();
+    try { localStorage.setItem(SEL_INIT_KEY, '1'); } catch (e) { /* 무시 */ }
+  }
+
   /* ------------------------------------------------------------------ 시작 */
   loadState();
+  initSelectionDefault();
   buildOriginSelect();
   updateOriginUI();
   bind();
