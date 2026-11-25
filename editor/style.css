@@ -182,7 +182,7 @@ button{cursor:pointer}
 }
 .fr-label{font-size:.72rem;font-weight:700;color:var(--muted);flex:none}
 .seg.mini{flex:none}
-.seg.mini button{padding:5px 10px;font-size:.72rem;min-width:0;border-radius:8px}
+.seg.mini button{padding:5px 10px;font-size:.72rem;min-width:0;border-radius:8px;white-space:nowrap}
 .fr-note{font-size:.68rem;color:var(--muted-2);line-height:1.4;flex:1;min-width:0}
 
 /* ---------------------------------------------------------------- 내보내기 */

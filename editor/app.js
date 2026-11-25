@@ -1264,7 +1264,7 @@
           setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
 
           var mb = (blob.size / 1048576).toFixed(1);
-          setProgress(100, '저장 완료 · ' + ext.toUpperCase(), name + ' · ' + fmt(total) + '초 · ' + mb + 'MB 내려받기 시작');
+          setProgress(100, '저장 완료 · ' + (ext === 'mp4' ? 'MP4' : 'WebM'), name + ' · ' + fmt(total) + '초 · ' + mb + 'MB 내려받기 시작');
           var footEl = $('exFoot');
           if (ext === 'webm' && state.format !== 'webm') {
             footEl.textContent += ' · 이 브라우저는 MP4 녹화를 지원하지 않아 WebM으로 저장했습니다. 유튜브는 그대로 업로드되고, 인스타 릴스는 MP4 변환이 필요할 수 있어요.';
