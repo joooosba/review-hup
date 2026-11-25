@@ -439,6 +439,10 @@
     return { lat: it.lat, lng: it.lng, name: it.title };
   }
 
+  function originAsPoint() {
+    return { lat: state.origin.lat, lng: state.origin.lng, name: state.origin.label };
+  }
+
   function popupHtml(it) {
     const out = ['<h4>' + esc(it.title) + '</h4>'];
     const meta = [];
@@ -448,7 +452,7 @@
     if (it.memo) out.push('<div>' + esc(it.memo) + '</div>');
     if (it.deadline) out.push('<div class="pop-meta">마감 ' + fmtDate(it.deadline) + ' · ' + ddayText(it.deadline) + '</div>');
     if (it.approx) out.push('<div class="pop-meta">동네 기준 대략 위치</div>');
-    const links = ['<a href="' + esc(naverDir(state.origin, itemAsPoint(it))) + '" target="_blank" rel="noopener">🧭 출발지→여기</a>'];
+    const links = ['<a href="' + esc(naverDir(originAsPoint(), itemAsPoint(it))) + '" target="_blank" rel="noopener">🧭 출발지→여기</a>'];
     links.push('<a href="' + esc(naverSearch(it.title)) + '" target="_blank" rel="noopener">🔎 매장 찾기</a>');
     if (it.url) links.push('<a href="' + esc(it.url) + '" target="_blank" rel="noopener">🔗 체험단</a>');
     out.push('<div class="pop-links">' + links.join('') + '</div>');
@@ -596,7 +600,7 @@
 
     const links = [];
     if (isNum(it.lat) && isNum(it.lng)) {
-      links.push('<a href="' + esc(naverDir(state.origin, itemAsPoint(it))) + '" target="_blank" rel="noopener" title="출발지에서 이 매장까지 네이버 길찾기">🧭 길찾기</a>');
+      links.push('<a href="' + esc(naverDir(originAsPoint(), itemAsPoint(it))) + '" target="_blank" rel="noopener" title="출발지에서 이 매장까지 네이버 길찾기">🧭 길찾기</a>');
     }
     links.push('<a href="' + esc(naverSearch(it.title)) + '" target="_blank" rel="noopener">🔎 매장</a>');
     if (it.url) links.push('<a href="' + esc(it.url) + '" target="_blank" rel="noopener">🔗 체험단</a>');
@@ -757,7 +761,7 @@
       if (!it) return;
       const leg = state.route.legs[i];
       rows.push('<li><span class="idx">' + (i + 1) + '</span>'
-        + '<a href="' + esc(naverDir(state.origin, itemAsPoint(it))) + '" target="_blank" rel="noopener" title="네이버 길찾기 열기">'
+        + '<a href="' + esc(naverDir(originAsPoint(), itemAsPoint(it))) + '" target="_blank" rel="noopener" title="네이버 길찾기 열기">'
         + esc(it.title) + '</a>'
         + '<span class="km">' + (leg ? kmText(leg.km) : '') + '</span></li>');
     });
