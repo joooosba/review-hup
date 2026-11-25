@@ -1021,25 +1021,21 @@
       g.font = '900 640px ' + FONT;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText(s.big, 540, 1080);
+      g.fillText(s.big, 540, 1180);
       g.restore();
 
-      g.fillStyle = 'rgba(255,255,255,.88)';
-      g.font = '700 34px ' + FONT;
-      g.textAlign = 'center';
-      g.fillText('SHORTS STUDIO · SAMPLE', 540, 880);
-
-      g.fillStyle = '#ffffff';
-      g.font = '900 96px ' + FONT;
-      g.textAlign = 'center';
-      g.fillText(s.label, 540, 1000);
-
       g.fillStyle = 'rgba(0,0,0,.35)';
-      roundRectOn(g, 540 - 190, 700, 380, 72, 36);
+      roundRectOn(g, 540 - 200, 520, 400, 76, 38);
       g.fill();
       g.fillStyle = '#ffffff';
       g.font = '800 32px ' + FONT;
-      g.fillText(s.badge, 540, 746);
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(s.badge, 540, 559);
+
+      g.fillStyle = 'rgba(255,255,255,.7)';
+      g.font = '700 30px ' + FONT;
+      g.fillText('SHORTS STUDIO · SAMPLE', 540, 1720);
 
       var url = c.toDataURL('image/png');
       var thumb = makeThumbFromCanvas(c);
