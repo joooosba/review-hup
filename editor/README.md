@@ -1,9 +1,9 @@
-# 🎬 쇼츠 스튜디오 (review-hub/editor)
+# 🎬 쇼츠 스튜디오 (shorts-editor)
 
 유튜브 쇼츠 · 인스타 릴스 · 네이버 클립용 **9:16 세로(1080×1920)** 영상을 브라우저에서 바로 편집하고 저장하는 웹 편집기입니다.
 서버·계정·설치가 필요 없고, 올린 파일은 어디로도 전송되지 않습니다(모든 처리는 브라우저 안에서).
 
-- 주소: https://joooosba.github.io/review-hup/editor/
+- 주소(배포 후): https://joooosba.github.io/shorts-editor/
 
 ## 기능
 
@@ -22,8 +22,18 @@
 ## 구조
 
 - `index.html` — 편집기 화면
-- `editor.css` — 다크 테마 UI (모바일/PC 반응형)
-- `editor.js` — 렌더러·타임라인·오디오 믹싱·녹화 (의존성 없음)
+- `style.css` — 다크 테마 UI (모바일/PC 반응형)
+- `app.js` — 렌더러·타임라인·오디오 믹싱·녹화 (의존성 없음)
+
+## 실행 방법
+
+별도 빌드 없이 `index.html`을 열면 됩니다. 파일을 `file://`로 열어도 대부분 동작하지만,
+브라우저에 따라 로컬 파일 업로드가 제한될 수 있으니 아래처럼 간이 서버로 여는 것을 권장합니다.
+
+```bash
+python3 -m http.server 8080
+# http://localhost:8080
+```
 
 ## 참고
 
