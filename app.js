@@ -250,7 +250,7 @@
 
     a.innerHTML = `
       <div class="thumb">
-        <div class="fallback">${c.kind === '배송형' ? '📦' : '🍽️'}</div>
+        <div class="fallback" aria-hidden="true">${c.kind === '배송형' ? '📦' : '🍽️'}</div>
         ${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
         <div class="badges">
           <span class="badge site-${esc(c.site)}">${esc(c.site)}</span>
