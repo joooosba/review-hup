@@ -596,7 +596,8 @@
     } else if (state.mode === 'date') {
       arr = arr.filter((it) => it.date === state.pickDate);
     } else if (state.mode === 'upcoming') {
-      arr = arr.filter((it) => it.date >= t);
+      /* 신청 중 항목은 '발표일'이 지나도 목록에서 사라지지 않게 한다(결과 반영 전까지 계속 보여야 함) */
+      arr = arr.filter((it) => it.date >= t || effStatus(it) === 'applied');
     }
     arr.sort(compareItems);
     if (state.route && state.route.ids && state.route.ids.length) {
