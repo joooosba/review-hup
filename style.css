@@ -1192,3 +1192,56 @@ body.modal-open { overflow: hidden; }
 
 /* 출발 마커: 회전 없이 '출발' 글자만 바로 세운다 */
 .map-pin.origin span > i { transform: none; }
+
+/* ------------------------------------------------- 🔐 내 체험단 연동 패널 */
+.sync-panel {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 7%, var(--panel)), var(--panel));
+}
+
+.sync-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+
+.sync-head b { font-size: .95rem; letter-spacing: -.01em; }
+
+.sync-sub { font-size: .76rem; color: var(--muted); line-height: 1.5; }
+.sync-sub b { color: var(--brand); }
+
+.sync-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.sync-form input[type="password"] {
+  flex: 1 1 200px;
+  min-width: 160px;
+  padding: 10px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: .9rem;
+  letter-spacing: .18em;
+}
+
+.sync-form input[type="password"]:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  border-color: var(--brand);
+}
+
+.sync-msg { margin: 9px 0 0; font-size: .78rem; color: var(--muted); line-height: 1.5; }
+.sync-msg.bad { color: #b91c1c; font-weight: 700; }
+
+:root[data-theme="dark"] .sync-msg.bad,
+:root:not([data-theme="light"]) .sync-msg.bad { color: #fca5a5; }
+
+.sched-meta .src {
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--panel-soft));
+  font-weight: 800;
+}

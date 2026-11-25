@@ -4,3 +4,11 @@ __pycache__/
 
 # 임시: GitHub App workflows 권한 없음 (권한 허용 후 추가)
 .github/
+
+# 개인 일정 평문/비밀번호는 절대 커밋하지 않는다
+data/my_schedule_plain.json
+data/*_plain.json
+data/my_schedule.enc.local.json
+*.plain.json
+.env
+.env.*

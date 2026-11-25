@@ -199,6 +199,9 @@
       deadline: it.deadline || '',
       memo: it.memo || '',
       url: it.url || '',
+      source: it.source || '',
+      remote: (it.remote && typeof it.remote === 'object') ? it.remote : null,
+      pin: !!it.pin,
       lat: isNum(it.lat) ? it.lat : (isNum(Number(it.lat)) && it.lat !== null && it.lat !== '' ? Number(it.lat) : null),
       lng: isNum(it.lng) ? it.lng : (isNum(Number(it.lng)) && it.lng !== null && it.lng !== '' ? Number(it.lng) : null),
       geoLabel: it.geoLabel || '',
@@ -528,6 +531,7 @@
     if (!state.pickId) return;
     const it = byId(state.pickId);
     if (!it) { state.pickId = null; return; }
+    it.pin = true;
     it.lat = e.latlng.lat;
     it.lng = e.latlng.lng;
     it.geoLabel = '지도에서 직접 지정';
@@ -589,6 +593,7 @@
     if (order >= 0) el.classList.add('in-route');
 
     const badges = [];
+    if (it.source) badges.push('<span class="src">' + esc(it.source) + '</span>');
     badges.push('<span>' + fmtDate(it.date) + (it.time ? ' ' + it.time : ' 시간 미정') + '</span>');
     badges.push(it.address
       ? '<span class="where">📍 ' + esc(it.address) + '</span>'
@@ -792,6 +797,7 @@
     renderRoute();
     updateOriginUI();
     syncCardButtons();
+    renderSync();
   }
 
   function note(html) {
@@ -966,6 +972,317 @@
     if (res && res.item) {
       toast(res.updated ? '📅 일정을 수정했습니다' : '📅 일정에 담았습니다 — 🗺️ 내 일정 탭에서 확인');
     }
+  }
+
+  /* ------------------------------------------------------------ 체험단 연동 */
+  const SRC_URL = 'data/my_schedule.enc.json';
+  const KEY_LS = 'rh-sched-key-v1';
+  const KDF_ITER = 100000;
+
+  const syncState = {
+    on: false,
+    count: 0,
+    generatedAt: '',
+    syncedAt: '',
+    busy: false
+  };
+
+  const syncLockEl = document.getElementById('syncLock');
+  const syncOnEl = document.getElementById('syncOn');
+  const syncPwEl = document.getElementById('syncPw');
+  const syncBtnEl = document.getElementById('syncBtn');
+  const syncMsgEl = document.getElementById('syncMsg');
+  const syncInfoEl = document.getElementById('syncInfo');
+  const syncMsg2El = document.getElementById('syncMsg2');
+
+  const hasCrypto = !!(window.crypto && window.crypto.subtle && window.TextEncoder);
+
+  function b64ToBuf(b64) {
+    const bin = atob(String(b64 || ''));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function bufToB64(buf) {
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function readKeyStore() {
+    try {
+      const raw = localStorage.getItem(KEY_LS);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || !d.key || !d.salt) return null;
+      return d;
+    } catch (e) { return null; }
+  }
+
+  function writeKeyStore(saltB64, keyB64) {
+    try {
+      localStorage.setItem(KEY_LS, JSON.stringify({
+        salt: saltB64, key: keyB64, at: new Date().toISOString()
+      }));
+    } catch (e) { /* 저장 실패는 무시하고 세션 안에서만 쓴다 */ }
+  }
+
+  function dropKeyStore() {
+    try { localStorage.removeItem(KEY_LS); } catch (e) { /* noop */ }
+  }
+
+  async function deriveRawKey(password, saltBuf) {
+    const enc = new TextEncoder();
+    const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: saltBuf, iterations: KDF_ITER, hash: 'SHA-256' }, base, 256
+    );
+    return bufToB64(bits);
+  }
+
+  async function decryptWithKey(payload, keyB64) {
+    const key = await crypto.subtle.importKey(
+      'raw', b64ToBuf(keyB64), { name: 'AES-GCM' }, false, ['decrypt']
+    );
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64ToBuf(payload.iv), tagLength: 128 }, key, b64ToBuf(payload.ciphertext)
+    );
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  async function fetchPayload() {
+    const res = await fetch(SRC_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('연동 파일을 불러오지 못했습니다 (HTTP ' + res.status + ')');
+    const payload = await res.json();
+    if (!payload || !payload.salt || !payload.iv || !payload.ciphertext) {
+      throw new Error('연동 파일 형식이 올바르지 않습니다');
+    }
+    return payload;
+  }
+
+  function remoteToItem(r) {
+    const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+    const lat = num(r.lat);
+    const lng = num(r.lng);
+    return {
+      id: String(r.id || ''),
+      source: r.source || '',
+      title: String(r.title || ''),
+      address: r.address || '',
+      deadline: r.deadline || '',
+      date: r.date || r.deadline || '',
+      time: r.time || '',
+      memo: r.memo || '',
+      url: r.url || '',
+      lat: isNum(lat) ? lat : null,
+      lng: isNum(lng) ? lng : null
+    };
+  }
+
+  /* 원격 일정과 로컬 일정을 id로 병합한다.
+     사용자가 바꾼 값(날짜·시간·주소·메모·지도 핀)과 방문/리뷰 체크는 그대로 두고,
+     손대지 않은 항목만 새 값으로 갱신한다. 로컬에만 있는 일정은 지우지 않는다. */
+  function mergeRemote(remoteItems) {
+    let added = 0;
+    let updated = 0;
+    remoteItems.forEach((r) => {
+      if (!r || !r.id || !r.title) return;
+      const rem = remoteToItem(r);
+      let it = state.items.find((x) => x.id === rem.id) || null;
+      if (!it) {
+        it = normalizeItem({
+          id: rem.id, source: rem.source, title: rem.title, address: rem.address,
+          date: rem.date || todayISO(), time: rem.time, deadline: rem.deadline,
+          memo: rem.memo, url: rem.url, lat: rem.lat, lng: rem.lng,
+          remote: rem, createdAt: Date.now()
+        });
+        if (isNum(rem.lat) && isNum(rem.lng)) it.geoStatus = 'ok';
+        state.items.push(it);
+        added += 1;
+        return;
+      }
+      const prev = it.remote;
+      const pick = (field) => (prev && it[field] !== prev[field] ? it[field] : rem[field]);
+      it.title = rem.title;
+      it.source = rem.source;
+      it.url = rem.url;
+      it.deadline = pick('deadline');
+      it.date = pick('date') || it.date;
+      it.time = pick('time');
+      it.address = pick('address');
+      it.memo = pick('memo');
+      if (!it.pin && isNum(rem.lat) && isNum(rem.lng)) {
+        it.lat = rem.lat;
+        it.lng = rem.lng;
+        it.approx = false;
+        it.geoLabel = '';
+        it.geoStatus = 'ok';
+      }
+      it.remote = rem;
+      updated += 1;
+    });
+    return { added: added, updated: updated };
+  }
+
+  function syncMsg(el, text, kind) {
+    if (!el) return;
+    if (!text) { el.hidden = true; el.textContent = ''; return; }
+    el.hidden = false;
+    el.textContent = text;
+    el.classList.toggle('bad', kind === 'bad');
+  }
+
+  function renderSync() {
+    if (!syncLockEl || !syncOnEl) return;
+    syncLockEl.hidden = syncState.on;
+    syncOnEl.hidden = !syncState.on;
+    if (!syncState.on) return;
+    const parts = ['동기화 ' + syncState.count + '건'];
+    if (syncState.generatedAt) parts.push('데이터 ' + syncState.generatedAt.replace('T', ' ').slice(0, 16));
+    if (syncState.syncedAt) parts.push('확인 ' + syncState.syncedAt);
+    syncInfoEl.textContent = parts.join(' · ');
+  }
+
+  function syncShellHint() {
+    if (!hasCrypto) {
+      syncBtnEl.disabled = true;
+      syncMsg(syncMsgEl, '이 브라우저에서는 암호화 기능(Web Crypto)을 쓸 수 없습니다. 최신 브라우저에서 열어 주세요.', 'bad');
+      return false;
+    }
+    if (location.protocol === 'file:') {
+      syncBtnEl.disabled = true;
+      syncMsg(syncMsgEl, '연동은 웹 주소(https://)로 열었을 때 동작합니다.', 'bad');
+      return false;
+    }
+    return true;
+  }
+
+  async function applyPayload(payload, keyB64) {
+    const plain = await decryptWithKey(payload, keyB64);
+    const items = Array.isArray(plain.items) ? plain.items : [];
+    const res = mergeRemote(items);
+    syncState.on = true;
+    syncState.count = items.length;
+    syncState.generatedAt = String(plain.generatedAt || payload.generatedAt || '');
+    syncState.syncedAt = new Date().toTimeString().slice(0, 5);
+    saveState();
+    renderSync();
+    renderAll();
+    resolvePending();
+    syncMsg(syncMsg2El, '선정 내역 ' + items.length + '건 중 새로 ' + res.added
+      + '건 추가, ' + res.updated + '건 갱신했습니다.');
+    toast('🔐 체험단 선정 내역을 불러왔습니다 (' + items.length + '건)');
+    return res;
+  }
+
+  async function syncWithPassword(pw) {
+    if (syncState.busy) return;
+    syncState.busy = true;
+    syncBtnEl.disabled = true;
+    syncMsg(syncMsgEl, '암호화 파일을 확인하는 중…');
+    try {
+      const payload = await fetchPayload();
+      const keyB64 = await deriveRawKey(pw, b64ToBuf(payload.salt));
+      try {
+        await decryptWithKey(payload, keyB64);
+      } catch (err) {
+        dropKeyStore();
+        syncMsg(syncMsgEl, '비밀번호가 맞지 않습니다.', 'bad');
+        return;
+      }
+      writeKeyStore(payload.salt, keyB64);
+      syncMsg(syncMsgEl, '');
+      syncPwEl.value = '';
+      await applyPayload(payload, keyB64);
+    } catch (err) {
+      syncMsg(syncMsgEl, err && err.message ? err.message : '연동에 실패했습니다.', 'bad');
+    } finally {
+      syncState.busy = false;
+      syncBtnEl.disabled = false;
+    }
+  }
+
+  async function syncWithStoredKey(opts) {
+    const store = readKeyStore();
+    if (!store) return false;
+    if (!hasCrypto || location.protocol === 'file:') return false;
+    try {
+      const payload = await fetchPayload();
+      if (payload.salt !== store.salt) {
+        dropKeyStore();
+        if (opts && opts.manual) {
+          syncMsg(syncMsgEl, '새로 암호화된 파일입니다. 비밀번호를 다시 입력해 주세요.', 'bad');
+        }
+        return false;
+      }
+      await applyPayload(payload, store.key);
+      if (opts && opts.manual) syncMsg(syncMsg2El, '최신 선정 내역으로 다시 맞췄습니다.');
+      return true;
+    } catch (err) {
+      if (opts && opts.manual) {
+        syncMsg(syncMsg2El, (err && err.message) ? err.message : '새로고침하지 못했습니다.', 'bad');
+      }
+      return false;
+    }
+  }
+
+  function lockSync() {
+    dropKeyStore();
+    syncState.on = false;
+    syncState.count = 0;
+    syncState.generatedAt = '';
+    syncState.syncedAt = '';
+    syncMsg(syncMsg2El, '');
+    syncMsg(syncMsgEl, '연동을 잠갔습니다. 담아 둔 일정은 그대로 남아 있습니다.');
+    renderSync();
+  }
+
+  async function syncInit() {
+    if (!syncLockEl || !syncOnEl) return;
+    renderSync();
+    if (!syncShellHint()) return;
+    const store = readKeyStore();
+    if (!store) return;
+    const ok = await syncWithStoredKey({});
+    if (!ok) {
+      syncState.on = false;
+      renderSync();
+      syncPwEl.focus();
+    }
+  }
+
+  function bindSync() {
+    if (!syncBtnEl) return;
+    syncBtnEl.addEventListener('click', () => {
+      const pw = syncPwEl.value.trim();
+      if (!pw) {
+        syncMsg(syncMsgEl, '잠금 비밀번호를 입력해 주세요.', 'bad');
+        syncPwEl.focus();
+        return;
+      }
+      syncWithPassword(pw);
+    });
+    syncPwEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        syncBtnEl.click();
+      }
+    });
+    const refreshEl = document.getElementById('syncRefresh');
+    if (refreshEl) {
+      refreshEl.addEventListener('click', () => {
+        refreshEl.disabled = true;
+        syncMsg(syncMsg2El, '새로고침 중…');
+        syncWithStoredKey({ manual: true }).then((ok) => {
+          refreshEl.disabled = false;
+          if (!ok) renderSync();
+        });
+      });
+    }
+    const lockEl = document.getElementById('syncLockBtn');
+    if (lockEl) lockEl.addEventListener('click', lockSync);
   }
 
   /* ---------------------------------------------------------------- 이벤트 */
@@ -1274,6 +1591,8 @@
   buildOriginSelect();
   updateOriginUI();
   bind();
+  bindSync();
   renderAll();
+  syncInit();
   resolvePending();
 })();

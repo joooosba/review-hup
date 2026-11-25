@@ -7,7 +7,7 @@
 <title>체험단 대시보드 · 구로·영등포·관악</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=20261125c">
+<link rel="stylesheet" href="style.css?v=20261125d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎁</text></svg>">
 </head>
 <body>
@@ -120,6 +120,33 @@
   </div>
 
   <div id="view-schedule" role="tabpanel" aria-labelledby="tabSchedule" hidden>
+    <section class="panel sync-panel" id="syncPanel" aria-label="내 체험단 연동">
+      <div id="syncLock">
+        <div class="sync-head">
+          <b>🔐 내 체험단 연동</b>
+          <span class="sync-sub">리뷰노트 · 강남맛집 · 레뷰 · 디너의여왕 · 리뷰플레이스에서 <b>선정된</b> 체험단을 암호화 파일에서 불러와 아래 일정·지도에 자동으로 채웁니다.</span>
+        </div>
+        <div class="sync-form">
+          <input type="password" id="syncPw" inputmode="numeric" autocomplete="current-password"
+                 placeholder="잠금 비밀번호" aria-label="잠금 비밀번호">
+          <button type="button" class="primary-btn" id="syncBtn">연동하기</button>
+        </div>
+        <p class="sync-msg" id="syncMsg" role="status" hidden></p>
+      </div>
+      <div id="syncOn" hidden>
+        <div class="sync-head">
+          <b>🔐 내 체험단 연동</b>
+          <span class="sync-sub" id="syncInfo"></span>
+        </div>
+        <div class="sync-form">
+          <button type="button" class="ghost-btn" id="syncRefresh">🔄 지금 새로고침</button>
+          <button type="button" class="ghost-btn" id="syncLockBtn"
+                  title="이 브라우저에 저장된 연동 키를 지웁니다. 다시 쓰려면 비밀번호가 필요합니다.">🔒 잠금</button>
+        </div>
+        <p class="sync-msg" id="syncMsg2" role="status" hidden></p>
+      </div>
+    </section>
+
     <section class="panel sched-controls" aria-label="일정 조건">
       <div class="filter-row">
         <div class="filter-group">
@@ -224,7 +251,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer
         onerror="var s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s);"></script>
-<script src="app.js?v=20261125a" defer></script>
-<script src="schedule.js?v=20261125e" defer></script>
+<script src="app.js?v=20261125b" defer></script>
+<script src="schedule.js?v=20261125f" defer></script>
 </body>
 </html>
