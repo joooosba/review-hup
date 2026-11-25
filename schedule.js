@@ -151,6 +151,16 @@
     return 'D-' + n;
   }
 
+  /* 발표일처럼 '마감'이라는 말이 어울리지 않는 날짜에 쓰는 표기 */
+  function ddayShort(iso, word) {
+    const t = ddayText(iso);
+    if (!t) return '';
+    if (t === '마감 지남') return (word || '') + ' 지남';
+    if (t === '오늘 마감') return '오늘 ' + (word || '');
+    if (t === '내일 마감') return '내일 ' + (word || '');
+    return t;
+  }
+
   function weekRange() {
     const t = parseYmd(todayISO());
     const dow = t.getDay();                        // 0=일요일
@@ -627,7 +637,7 @@
 
     if (applied) {
       badges.push(it.announce
-        ? '<span class="when">📣 발표 ' + fmtDate(it.announce) + ' ' + ddayText(it.announce) + '</span>'
+        ? '<span class="when">📣 발표 ' + fmtDate(it.announce) + ' ' + ddayShort(it.announce, '발표') + '</span>'
         : '<span class="when">📣 발표일 미정</span>');
     } else {
       badges.push('<span class="when">' + fmtDate(it.date) + (it.time ? ' ' + it.time : ' 시간 미정') + '</span>');
@@ -657,7 +667,8 @@
         + '<input type="checkbox" data-sact="sel"' + (it.sel ? ' checked' : '') + ' aria-label="지도·노선 포함">'
         + '<span>지도·노선</span></label>';
 
-    const offer = (it.offers && it.memo && it.memo.indexOf(it.offers) >= 0) ? '' : it.offers;
+    const offerShort = String(it.offers || '').replace(/\([^)]*\)/g, '').trim();
+    const offer = (offerShort && it.memo && it.memo.indexOf(offerShort) >= 0) ? '' : it.offers;
     const memoText = [offer, it.memo].filter(Boolean).join(' · ');
 
     el.innerHTML = ''
