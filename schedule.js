@@ -420,9 +420,9 @@
     return L.divIcon({
       className: 'map-pin origin',
       html: '<span><i>출발</i></span>',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-      popupAnchor: [0, -20]
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -22]
     });
   }
 
@@ -457,6 +457,7 @@
 
   function renderMap() {
     if (!ensureMap()) return;
+    map.invalidateSize({ animate: false });
     markerLayer.clearLayers();
 
     const list = visibleItems();
@@ -494,7 +495,8 @@
     }
 
     if (points.length > 1) {
-      map.fitBounds(L.latLngBounds(points).pad(0.18), { maxZoom: 14 });
+      map.fitBounds(L.latLngBounds(points), { padding: [42, 42], maxZoom: 15 });
+      if (map.getZoom() > 15) map.setZoom(15);
     } else {
       map.setView([state.origin.lat, state.origin.lng], 13);
     }
@@ -1188,7 +1190,9 @@
     if (name === 'schedule') {
       renderAll();
       resolvePending();
-      if (map) setTimeout(() => map.invalidateSize(), 80);
+      if (map) {
+        setTimeout(() => { map.invalidateSize({ animate: false }); renderMap(); }, 120);
+      }
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
   }
