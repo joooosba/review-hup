@@ -1022,7 +1022,7 @@
         deadline: f.deadline.value,
         memo: f.memo.value.trim()
       });
-      f.reset();
+      addForm.reset();
       addForm.hidden = true;
       state.mode = 'upcoming';
       document.querySelectorAll('#dateChips .chip').forEach((b) => b.classList.toggle('on', b.dataset.date === 'upcoming'));
